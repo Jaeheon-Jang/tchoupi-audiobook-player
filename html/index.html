@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>추피 오디오북</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      text-align: center;
+      background-color: #fef7ef;
+      padding: 2rem;
+      color: #333;
+    }
+
+    h2 {
+      font-size: 1.8rem;
+      margin-bottom: 1.5rem;
+      color: #2c3e50;
+    }
+
+    .control-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .inline-input-group {
+      display: flex;
+      flex-direction: row;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .inline-input-group input[type="number"] {
+      padding: 0.6rem;
+      font-size: 1rem;
+      width: 200px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+
+    .inline-input-group button {
+      padding: 0.6rem 1.2rem;
+      font-size: 1rem;
+      background-color: #ff9a57;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .inline-input-group button:hover {
+      background-color: #f27528;
+    }
+
+    button {
+      padding: 0.6rem 1.2rem;
+      font-size: 1rem;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #2980b9;
+    }
+
+    #qr-reader {
+      width: 300px;
+      margin: 1rem auto;
+    }
+
+    #cover-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 2rem;
+    }
+
+    #cover-image {
+      width: 100%;
+      max-width: 400px;
+      height: auto;
+      border-radius: 16px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+      display: none;
+    }
+
+    audio {
+      margin-top: 1rem;
+      width: 90%;
+      max-width: 400px;
+    }
+
+    @media screen and (max-width: 480px) {
+      body {
+        padding: 1rem;
+      }
+
+      h2 {
+        font-size: 1.4rem;
+      }
+
+      .inline-input-group {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .inline-input-group input,
+      .inline-input-group button {
+        width: 100%;
+        max-width: 240px;
+      }
+
+      #cover-image {
+        max-width: 90%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <h2>📚 추피 오디오북 플레이어</h2>
+
+  <div class="control-panel">
+    <div class="inline-input-group">
+      <input type="number" id="book-number-input" placeholder="책 번호 입력 (예: 6)" />
+      <button onclick="playFromInput()">재생</button>
+    </div>
+    <button onclick="startScanner()">📷 QR 코드 인식</button>
+  </div>
+
+  <div id="qr-reader" style="display: none;"></div>
+
+  <div id="cover-wrapper">
+    <img id="cover-image" src="" alt="책 표지" />
+    <audio id="audio-player" controls autoplay></audio>
+  </div>
+
+  <script>
+    const defaultCoverUrl = "default_tchoupi_cover.png";
+    const cover = document.getElementById("cover-image");
+    const audio = document.getElementById("audio-player");
+
+    window.onload = () => {
+      showDefaultCover();
+      document.getElementById("book-number-input").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          playFromInput();
+        }
+      });
+    };
+
+    function showDefaultCover() {
+      cover.src = defaultCoverUrl;
+      cover.style.display = "block";
+    }
+
+    function startScanner() {
+      const qrReader = document.getElementById("qr-reader");
+      qrReader.style.display = "block";
+
+      const scanner = new Html5Qrcode("qr-reader");
+      scanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: 250 },
+        (decodedText) => {
+          scanner.stop();
+          qrReader.style.display = "none";
+          const urlParams = new URLSearchParams(decodedText.split('?')[1]);
+          const kind = urlParams.get('kind');
+          const rawNum = kind?.split('_')[1] ?? '00';
+          playAudioFromBookNum(rawNum);
+        },
+        (error) => {
+          console.warn("QR 인식 실패:", error);
+        }
+      );
+    }
+
+    function playFromInput() {
+      const input = document.getElementById("book-number-input").value;
+      if (!input || isNaN(input)) {
+        alert("책 번호를 정확히 입력해주세요.");
+        return;
+      }
+      playAudioFromBookNum(input);
+    }
+
+    function playAudioFromBookNum(number) {
+      const paddedMp3 = number.padStart(3, '0');
+      const paddedCover = number.padStart(2, '0');
+
+      const audioUrl = `http://222.231.33.227:5104/taedong_audio/book/bok_${paddedMp3}.mp3`;
+      const coverUrl = `http://222.231.33.227/webapp/taedong_turnjs/static/cover/cover_tchoupi_${paddedCover}.png`;
+
+      showDefaultCover();
+
+      const testImg = new Image();
+      testImg.onload = () => {
+        cover.src = coverUrl;
+      };
+      testImg.src = coverUrl;
+
+      audio.src = audioUrl;
+      audio.play();
+    }
+  </script>
+</body>
+
+</html>

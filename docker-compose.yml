@@ -1,0 +1,11 @@
+version: '3'
+
+services:
+  web:
+    image: nginx:alpine
+    container_name: tchoupi-web
+    ports:
+      - "8080:80"  # ← 여기만 수정
+    volumes:
+      - ./html:/usr/share/nginx/html:ro
+    restart: unless-stopped
